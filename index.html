@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<!-- saved from url=(0060)https://www.robinsloan.com/books/annabel-scheme-serial/read/ -->
+<html lang="en"><!--
+
+Don't worry, spiders,
+I keep house
+casually.
+
+Kobayashi Issa
+
+--><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, minimum-scale=1.0, user-scalable=0.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="generator" content="These human fingers">
+<link href="./src/perfect-edition-cff8a567.css" type="text/css" rel="stylesheet">
+<title>Annabel Scheme and the Adventure of the New Golden Gate</title>
+<script type="text/javascript">
+  if (window.location.hostname.includes("amazonaws.com") ||
+      window.location.hostname.includes("cloudfront.net") ) {
+    window.location.hostname = "www.robinsloan.com";
+  }
+
+  // -- Side-to-side scrolling support --
+
+  // This is the function that kicks off a side-to-side page scroll.
+  // It is taken from:
+  // https://github.com/iamdustan/smoothscroll/blob/master/src/smoothscroll.js
+  function xScroll(targetX) {
+    document.body.scrollLeft = targetX;
+  }
+
+  // This easing function returns a relative "how far you should be"
+  // value in the range 0.0-1.0 for an input "time elapsed" value,
+  // also relative, in the range 0.0-1.0
+  function ease(k) {
+    return (-Math.pow(2, -10 * k) + 1);
+  }
+
+  // -- Utility --
+
+  // Look up the real pixel value of a property on the book DOM element
+  function getComputed(propertyName) {
+    return Number(
+      getComputedStyle(bookElement)
+        .getPropertyValue(propertyName)
+        .replace("px", ""),
+    );
+  }
+
+  // Look up the positioning rect of a DOM element
+  function getRect(element) {
+    // terrible hack for Firefox, which treats getBoundingClientRect as an
+    // inner dimension for some unknown reason:
+    const rects = element.getClientRects();
+    return rects[rects.length - 1];
+  }
+
+  // -- Page turning --
+
+  // First: here are legible aliases for our page turn functions.
+  // The idea is to "say what you really want" elsewhere in this code
+  // rather than cryptically call turnPage(-1, false)
+
+  // As you can tell from the functions above, turnPage accepts
+  // a turnDirection parameter that can be
+  //  1: turn forward
+  // -1: turn back
+  //  0: turn to "this page", i.e., re-center it
+  function turnPage(turnDirection) {
+
+    // How wide is one page, currently?
+    // TODO: maybe change these to `page*` instead of `column*`
+    const columnWidth = getComputed("column-width");
+    const columnGap = getComputed("column-gap");
+    const columnTotal = Math.round(columnWidth + columnGap);
+
+    // Where are we?
+    const currentLeftOffset = document.body.scrollLeft;
+
+    // Where are we, then, in terms of pages?
+    const currentPageNumber = Math.trunc(currentLeftOffset / columnTotal);
+
+    // Where do we want to be?
+    targetPageNumber = currentPageNumber + turnDirection;
+    if(targetPageNumber != 0 && currentPageNumber != 0)
+    {
+      targetPageNumber = targetPageNumber + turnDirection;
+    }
+
+    console.log(" Curr: " + currentPageNumber + " ----> Target: " + targetPageNumber);
+
+    // Working backwards, what's the x-coordinate of the left edge
+    // of our target page number?
+    let closestPageEdge = targetPageNumber * columnTotal;
+
+    // This is an edge case that I&nbsp;don't totally remember ...
+    // It'll return to me at some point, I'm sure.
+    // 8.0 pixels is for sure a magic number, sorry!
+    if (Math.abs(closestPageEdge - currentLeftOffset) < 8.0) {
+      closestPageEdge += columnTotal * turnDirection;
+      writePageNumber(targetPageNumber + 1); // hacky
+    }
+    else if(targetPageNumber == -1)
+    {
+      return;
+    }
+
+    // Hold up -- you can't turn to the next page if you're at the
+    // end of the book!
+    if (
+      (turnDirection > 0) &&
+      (getRect(endElement).x <= (window.innerWidth + columnGap))
+    ) {
+      // If that's the case, return without scrolling:
+      return;
+    }
+
+    // Now it's OK to write our page number:
+    writePageNumber(targetPageNumber);
+
+    // If we previously navigated using a chapter link, we want to clear
+    // that hash out of the URL, because we're now on a different page:
+    window.location.hash = "";
+
+    // After all this, we are finally ready to scroll:
+    if(targetPageNumber == 0)
+    {
+      xScroll(closestPageEdge);
+    }
+    else
+    {
+      xScroll(closestPageEdge + Math.trunc(columnTotal/2));
+    }
+  }
+
+  // This function turns, without any animation, to a particular numbered page.
+  // It's a bit flaky because "page numbers" can change completely based on
+  // browser size -- this is a responsive, reflowable layout.
+  // But, better to have the capability than not ... maybe?
+  function turnToPage(pageNumber) {
+    const columnWidth = getComputed("column-width");
+    const columnGap = getComputed("column-gap");
+    const columnTotal = columnWidth + columnGap;
+
+    let pageEdge = pageNumber * columnTotal;
+    if (pageEdge > bookElement.scrollWidth) {
+      // In this case, the page number is greater than total number of pages
+      // currently available. Again, this isn't uncommon, because of reflow.
+      // So, we'll just go the end of the book.
+      pageEdge = bookElement.scrollWidth - (columnTotal + columnWidth);
+    }
+
+    // Display the cute bookmark so people get the idea that they have
+    // returned to a saved location:
+    const bookmarkElement = document.querySelector("div.bookmark");
+    bookmarkElement.style.display = "block";
+    bookmarkElement.style.left = `${pageEdge + columnWidth / 2.0}px`;
+
+    document.body.scrollLeft = pageEdge;
+  }
+
+  // This function turns, without any animation, to a particular hash,
+  // which we use to link directly to a chapter.
+  // The function expects the raw hash from the URL -- # included.
+  function turnToChapter(rawHash) {
+    // Convert the raw hash to the element id scheme used in the book HTML:
+    const id = "chapter_" + rawHash.replace("#", "");
+
+    // Now, find the <h2> element with that id.
+    let targetHeading =
+      Array.from(document.querySelectorAll("h2")).find((heading) => {
+        return heading.getAttribute("id") == id;
+      });
+
+    targetHeading.scrollIntoView();
+
+    // This gets us part of the way there ... but we have more to do.
+    // scrollIntoView() doesn't know the niceties of our layout --
+    // as long as the targetHeading is barely visible, it's happy.
+    // WE HOWEVER ARE NOT.
+    // To calculate the misalignment, we need to know where, in window
+    // coordinates, the left edge of our page should be.
+    // |------------------- window.innerWidth -------------------|
+    //       this edge -> | bookElement.width |
+    const wherePageEdgeShouldBe =
+      (window.innerWidth - getRect(bookElement).width) / 2.0;
+
+    // Next, we see how far off the mark we are:
+    const misalignment = getRect(targetHeading).x - wherePageEdgeShouldBe;
+
+    // Finally, we compensate:
+    document.body.scrollLeft += misalignment;
+  }
+
+  // -- TOC and config --
+  // These functions are all very simple and, I&nbsp;believe, self-explanatory.
+
+  function setTextScale(scale) {
+    document.documentElement.style.setProperty(
+      "--font-size",
+      `${BASE_FONT_SIZE * scale}px`,
+    );
+    console.log(`${BASE_FONT_SIZE * scale}px`);
+  }
+
+  function toggleNav() {
+    if (navElement == null) {
+      return;
+    }
+
+    if (navElement.className == "invisible") {
+      navElement.className = "visible";
+    } else {
+      navElement.className = "invisible";
+    }
+  }
+
+  function writePageNumber(pageNumber) {
+    window.localStorage.setItem("pageNumber", pageNumber);
+  }
+
+  function readPageNumber() {
+    const pageNumber = Number(window.localStorage.getItem("pageNumber"));
+    if (pageNumber > 1) {
+      turnToPage(pageNumber);
+    }
+  }
+
+  // -- Setup --
+
+  const CLICK_DEBOUNCE_TIME = 50; // millis
+  const LONG_PRESS_TIME = 250; // millis
+
+  const BASE_FONT_SIZE = 18.0; // px
+
+  // These are globals where we will cache these elements
+  // so we don't have to querySelector() them every time:
+  var bookElement;
+  var navElement;
+  var endElement;
+
+  // These are globals used to keep track of a few things used below:
+  var scrollTimer;
+  var lastMouseDown = Date.now();
+  var lastClick = Date.now();
+
+  // Here is the big setup function:
+  document.addEventListener("DOMContentLoaded", (e) => {
+    bookElement = document.querySelector("div.book");
+    navElement = document.querySelector("nav"); // This might be null!
+    endElement = document.querySelector("p.last-page");
+
+    // Does the URL have a hash, indicating a link directly to a chapter?
+    // The length check is > 1 because an empty hash "#" is length 1
+    if (window.location.hash.length > 1) {
+      turnToChapter(window.location.hash);
+    } else {
+      readPageNumber();
+    }
+
+    // Here's the scroll "re-adjustment" handler
+    // After a free scroll, we wait for a beat (1000 millis, to be exact)
+    // and then snap our scroll position to a page edge.
+    // We put this here in the DOMContentLoaded handler because we need
+    // this `body` element to be ready!
+    document.body.addEventListener("scroll", (e) => {
+      // Were we already waiting to snap? If so, forget that:
+      if (scrollTimer) {
+        clearTimeout(scrollTimer);
+      }
+
+      // Wait ... then snap:
+      scrollTimer = setTimeout(() => {
+        turnPage(0);
+      }, 1000);
+    });
+
+    // Handle click on the TOC button, if it exists:
+    document.querySelector("button.toc-button")?.addEventListener("click", (e) => {
+        toggleNav();
+        e.stopPropagation();
+    });
+
+    // Handle click on the close button, if it exists:
+    document.querySelector("div.close-button")?.addEventListener("click", (e) => {
+        toggleNav();
+        e.stopPropagation();
+    });
+
+    // Add click handlers to the chapter titles in the TOC, if they exist:
+    document.querySelectorAll("nav a")?.forEach((link) => {
+      link.addEventListener("click", (e) => {
+        toggleNav();
+        turnToChapter(e.target.getAttribute("href"));
+        e.stopPropagation();
+      });
+    });
+
+    // Add click handlers to the text scale options in the TOC, if they exist:
+    document.querySelectorAll("nav div.controls button")?.forEach((button) => {
+      const size = `${BASE_FONT_SIZE * button.dataset.scale}px`;
+      button.style.fontSize = size;
+
+      button.addEventListener("click", (e) => {
+        setTextScale(e.target.dataset.scale);
+        e.stopPropagation();
+      });
+    });
+
+    // This next bit is hacky, but/and it allows us to respond appropriately
+    // to user changes to overall browser font size, e.g. with ⌘+ and ⌘-.
+    // We want our font size options to be built "around" that user-selected
+    // font size ... right? (I might be overthinking this.)
+    // We have to wrap this in a setTimeout because the computed font size,
+    // reflecting the user-selected font size, isn't available at the moment
+    // DOMContentLoaded fires -- shocking!
+    setTimeout(function () {
+      // So what IS the font-size of this document, reflecting any changes
+      // by the user?
+      let realFontSize = Number(
+        getComputedStyle(document.documentElement)
+          .getPropertyValue("font-size")
+          .replace("px", ""),
+      );
+
+      // So ... basically we now redo what we did above, setting up those
+      // click handlers for the text scale options.
+      // (if they exist)
+      document.querySelectorAll("nav div.controls button")?.forEach((button) => {
+          const size = `${realFontSize * button.dataset.scale}px`;
+          button.style.fontSize = size;
+
+          button.addEventListener("click", (e) => {
+            setTextScale(e.target.dataset.scale);
+            e.stopPropagation();
+        });
+      });
+    }, 1000); // end of setTimeout
+
+    // TODO: The more I&nbsp;think about the text scale bit above, the more I&nbsp;think
+    // it is dumb. Maybe there's a better/cleaner approach.
+  });
+
+
+  // -- More controls --
+  // We can set these up outside the DOMContentLoaded handler, they are eternal
+
+  // Handle keyboard controls:
+  document.addEventListener("keydown", (e) => {
+    // Left arrow
+    if (event.keyCode === 37) {
+      e.preventDefault();
+      turnPage(-1);
+    }
+    // Right arrow, space bar
+    if ((event.keyCode === 39) || (event.keyCode === 32)) {
+      e.preventDefault();
+      turnPage(1);
+    }
+  });
+
+  // Handle the scroll wheel:
+  document.addEventListener("wheel", (e) => {
+    // Don't override the scroll wheel if the user
+    // is browsing the TOC.
+    // Be sure to use safe navigation for the TOC element:
+    if (navElement?.className == "visible") {
+      return;
+    }
+
+    // I&nbsp;don't remember why we do this check
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      e.preventDefault();
+      document.body.scrollLeft += e.deltaY;
+    }
+  }, { passive: false });
+
+  // Keep track of mousedowns, to calculate timings for events below:
+  document.addEventListener("mousedown", function (e) {
+    lastMouseDown = Date.now();
+  });
+
+  // Handle clicks, which generally turn the page -- ALTHOUGH you might notice
+  // that most of this code is devoted to looking for reasons NOT to turn
+  // the page ...
+  document.addEventListener("click", function (e) {
+    const now = Date.now();
+
+    // Don't turn the page on long press (e.g., mobile text selection).
+    // "click" events register on mouseup, so we are saying, if it's been
+    // a looong time since mousedown ... don't turn the page
+    if ((now - lastMouseDown) > LONG_PRESS_TIME) {
+      return;
+    }
+
+    // Don't turn the page on the second click in a double-click:
+    if ((now - lastClick) < CLICK_DEBOUNCE_TIME) {
+      return;
+    }
+
+    // But do record the timing of this click:
+    lastClick = now;
+
+    // (Why are people double-clicking? I&nbsp;don't know.)
+
+    // Don't turn page if the user clicked a link:
+    if (e.target.tagName == "A") {
+      return;
+    }
+
+    // Don't turn the page if the user is selecting text:
+    if (window.getSelection().toString().length > 0) {
+      return;
+    }
+
+    // Okay, there's no avoiding it ... turn the page.
+    // Clicks in the left 1/3 of the screen turn back,
+    // click in the right 2/3 turn forward
+    if (e.clientX < (window.innerWidth / 3.0)) {
+      turnPage(-1);
+    } else {
+      turnPage(1);
+    }
+  });
+
+  // Detect changes in the URL hash, which we use for chapter titles.
+  // Note that this is a window event, not a document event
+  window.addEventListener("hashchange", (e) => {
+    if (window.location.hash.length > 1) {
+      turnToChapter(window.location.hash);
+    }
+  });
+
+</script>
+</head>
+<body>
+<nav class="invisible">
+<div class="toc">
+<h1>Indice</h1>
+<div class="close-button">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" x="0px" y="0px" width="100%" height="100%" viewBox="0 0 10 10" xml:space="preserve">
+<g>
+<line x1="0" y1="0" x2="10" y2="10" vector-effect="non-scaling-stroke"></line>
+<line x1="10" y1="0" x2="0" y2="10" vector-effect="non-scaling-stroke"></line>
+</g>
+</svg>
+</div>
+<ol>
+  
+</ol>
+</div>
+</nav>
+<div class="print-cover">
+<div class="title"><h1><span>Annabel&nbsp;Scheme</span><span>and&nbsp;the</span><span>Adventure of&nbsp;the New&nbsp;Golden&nbsp;Gate</span></h1><h2>Robin Sloan</h2></div>
+</div>
+<div class="book">
+<div class="introduction">
+<h2>Revista Digital</h2>
+<p>
+  Por Michael Espinoza.
+</p>
+</div>
+<img class="cover" src="./src/scheme-cover-web.jpg" style="display: block; break-before: column; break-after: column; width: var(--column-width); height: var(--column-height); max-height: var(--column-height); overflow: hidden; mix-blend-mode: multiply; object-fit: contain;">
+
+<!--
+  <div class="title">
+  <h1><span>Annabel&nbsp;Scheme</span><span>and&nbsp;the</span><span>Adventure of&nbsp;the New&nbsp;Golden&nbsp;Gate</span></h1><h2>Robin Sloan</h2>
+</div>
+-->
+
+<h2>
+  Horror cósmico en la cultura pop
+  <small>Por: Esteban Matute</small>
+</h2>
+
+<div>
+  <img src="./src/HP_CARA.jpg" style="width: calc(var(--column-width)*0.3); float: left;">
+
+  <p>
+    H.P Lovecraft fue un escritor, pero, sobre todo, un gran imaginativo, es considerado según muchos expertos cómo el creador de un nuevo género literario y artístico. El horror cósmico nos presenta, con un halo de misterio e impotencia, lo que mora más allá de los confines del espacio cómo algo inalcanzable, ineludible y sofocante, un terror que con su sola presencia nos enloquece. Con este cóctel de bizarreadas (en el sentido anglosajón de la palabra) se cuecen tramas que exploran el miedo más fundamental del ser humano, el miedo a lo desconocido. Esta manera de contar historias e infundir terror y fascinación nos puede sonar desconocida a muchos, pero los resquicios se observan aún en la cultura pop a través de diversas y muy conocidas obras.
+  </p>  
+
+  <p>
+    El horror cósmico es un término muy amplio del que podemos definir ciertas características comunes pero que no se adaptan a una formula exacta, es común combinarlo con otros géneros lo que ocasiona curiosas mezclas que siempre varían un poco dependiendo del autor. Lo más importante es siempre la tendencia anti antropocentrista dónde los personajes, generalmente humanos, son nada más que peones ante las bestias que murmuran en la oscuridad sobrepasando a su pensamiento. La fragilidad humana es expresada en terror psicológico con aires funestos y pesimistas que nos hacen contemplar nuestro propio retraso madurativo como especie. Sin héroes o villanos, estos relatos intentan mostrarnos que lo que llamamos monstruos son dioses que no podemos comprender.
+  </p>
+
+  <p>
+    Pero ¿dónde podemos encontrar presente esto más allá de los libros? El cine es el mejor ejemplo de cómo adaptar este tipo de conceptos más allá de la literatura. Películas de terror muy conocidas cómo Alien e It o series como Juego de tronos nos presentan a seres humanos peleando con monstruos del espacio sideral que escapan a su comprensión. The thing es el clásico del terror del maestro John Carpenter, una película que nos presenta a unos investigadores en la Antártida que se topan con una cosa cambia formas que los atormenta y busca matarlos siendo un potencial peligro para la raza humana. Con esta premisa que toma elemento de En las montañas de la locura, Carpenter da cátedra de cómo dar miedo sin perder el factor del desconocimiento.
+  </p>
+
+  <img src="./src/LA_COSA.jpg" style="width: calc(var(--column-width)*0.35); float: right;">
+
+  <p>
+    Otro de los grandes medios por los que se ha difundido esto es el arte de los videojuegos. Grandes videojuegos como Skyrim, The sinking city, Eternal darkness y World of Warcraft basan su historia o toman elementos de la obra de H.P Lovecraft. El más aclamado y conocido es Bloodborne, aquí encarnamos a un cazador en la ciudad de Yharnam en la noche de la caza, lugar en el que los habitantes han sido infectados por una misteriosa enfermedad proveniente de antiguos dioses. Con cultos extraños y una metrópoli sumida en una locura onírica, Bloodborne ha sido galardonado múltiples veces por su historia.
+  </p>
+
+  <p>
+    Finalmente hablemos de uno de mis artes favoritos, la música. Y aquí el término de horror cósmico y su definición se difuminan un poco pues el plasmar este miedo primordial y onírico a través de la música es simple y sencillamente titánico. Cuidar no solo la estética de cómo suena tu obra sino también lo que quiere reflejar es muy complicado, pero hay muy buenos ejemplos (aunque bastante desconocidos) de esto.
+  </p>
+
+  <img src="./src/BLOODBORNE.jpg" style="width: calc(var(--column-width)*0.6); float: left;">
+  
+  <p style="margin-top: calc(var(--column-height)*0.1);">
+    
+    Quizá la más conocida sea The call of ktulu de Metallica, titulada cómo el relato más conocido de Lovecraft, la pieza adapta La sombra sobre Innsmouth de manera subliminal y cargada de simbolismos a través de una instrumental de casi nueve minutos. Me gustaría recomendar personalmente el álbum de The great old ones and other beings, un álbum conceptual en el que cada canción trata sobre un dios antiguo y que trasmite una gran estética lovecraftiana.
+  </p>
+
+  <p>
+    Aunque no siempre la sepamos ver o apreciar, la influencia del horror cósmico en la cultura popular y en la inspiración de otros artistas es notoria e inequívoca. Quizá hayas descubierto ahora mismo el concepto con lo que te acabo de contar, pero no por ello estás tarde a adentrarte en los abismos más recónditos y oscuros del arte de la mano de películas, series, canciones, libros y/o videojuegos que expandan nuestra visión de lo que es el horror. Al final, lo más importante en el arte es entretener.
+  </p>
+
+</div>
+
+<h2>
+  La importancia de implementos académicos para un mejor rendimiento
+</h2>
+<small>
+  Por: Danilo Beltrán, David Medina y Eduardo Orellana   
+</small>
+
+<div>
+  <p>
+    En el colegio Nuestra familia, en ciertas materias como: física, química y educación física, se utilizan implementos diferentes que las otras materias; en química y física hay prácticas de laboratorio con materiales específicos según la práctica planteada; y Educación física, de la misma manera, tiene materiales específicos para los ejercicios de cada clase, por lo cual consideramos necesario cuestionarnos ¿hay los suficientes materiales y las herramientas necesarias para estas asignaturas?, para responder esto decidimos realizar unas cuantas entrevistas a los profesores encargados de dichas asignaturas y de los laboratorios, también.
+  </p>
+  
+  <img src="./src/CONOS.png" class="l5img">
+
+  <p>
+    En el área de Educación Física se realizó una entrevista a Freddy Faicán, profesor de educación física en el bachillerato; se le preguntó sobre si los materiales para su área eran suficientes y si no lo eran ¿con qué frecuencia percibía la falta de materiales para sus clases? Respondió que sí hacen falta materiales para atletismo. También qué nos está faltando algunos implementos en el fútbol y básquet y que para ciertos ejercicios no contamos todavía con ciertos implementos necesarios. En resumen, hace falta materiales para lograr cumplir con todas las destrezas planteadas. Además, le preguntamos ¿con qué frecuencia faltan para sus clases los implementos? ¿Y su respuesta fue que “depende del bloque en el que estemos siempre necesitamos de algunos materiales extra para la materia, entonces si nos faltan cierta cantidad de implementos? Por lo cual la última pregunta fue ¿qué implementos le gustaría que se agreguen a su materia? a lo que no dudo en responder que: “balones de fútbol, de vóley, más conos, platos, estacas, vallas, entre otros materiales.
+  </p>
+  
+  <p>
+    En cuanto a la materia de física se hizo la entrevista Esteban Matute, compañero de tercero de bachillerato, se le preguntó si el colegio cuenta con las herramientas necesarias para rendir al máximo en las clases y que materiales le gustaría integrar. Respondió que sí, si cuenta con lo necesario porque en las prácticas y en los experimentos propios del salón hay un montón de instrumentos que nos permiten entender muy bien el tema, como, por ejemplo, la construcción de un foco incandescente con una mina y todo lo que tiene que ver con eléctrica y electrónica se da muy bien porque tenemos siempre las herramientas disponibles. En cuanto a los implementos que le gustaría que se agreguen en los laboratorios, el estudiante agregó que a él le gusta mucho la cosmología por lo que le gustaría que agreguen ciertos diagramas o como herramientas para esta parte de la materia.
+  </p>
+
+  <img src="src/TELES.png" class="r5img">
+
+</div>
+
+<p>
+  La materia de química también suele necesitar muchos implementos y herramientas, desde materiales para la seguridad de estudiantes, como insumos para que practiquen en el laboratorio, la Bioquímica Fernanda Faicán nos habla de que tenemos un 80% de materiales necesarios, a nivel de lo teórico podríamos decir que tenemos el 100% y usamos muchas estrategias virtuales, pero en el laboratorio nos faltan algunas cosas, algunas herramientas y algunos reactivos. “En algunas prácticas se vuelve complicado llevar a cabo las instrucciones o experimentos porque nos faltan materiales, no solo debido al costo, sino que también faltan por lo difícil de conseguirlos y por sus restricciones, faltan instrumentos que son bastante necesarios, pero a pesar de que tenemos deficiencias, la institución tiene un buen aporte, porque a comparación de otras instituciones, tampoco se llegan a realizar prácticas de laboratorio en ciertos colegios nos dice la bioquímica Fernanda Faican. De lo práctico se podría decir que, ha existido ciertas problemáticas, en ocasiones nos llegan los implementos después de las prácticas, de vez en cuando llegan tarde ciertos reactivos debido a los trámites que se deben tener para tener este tipo de productos en el laboratorio, entonces se debe considerar el tiempo de planificación para realizar ciertas actividades en el laboratorio. Nos comentó de ciertos elementos que le faltan a nuestra institución,  “para mí materia sería muy útil, instrumentos como baño maría, en el colegio lo hacemos de forma casera, pero ahí nos están faltando muchos implementos, porque nos faltan, por ejemplo: ollas, y principalmente reactivos; como ácido sulfúrico y ácido clorhídrico, también otros tipos de reactivos qué son muy necesarios, si se considera con relación a la instrumentación sería bueno una adecuación de laboratorio, porque se utilizan demasiadas extensiones y eso de ahí puede ser muy riesgoso y se espera que haya una adecuación para el sistema de tomacorriente en las clases”. 
+</p>
+
+<p>
+  En conclusión, el colegio si tiene algunas deficiencias en cuanto a los materiales para la realización de algunas clases, aun así, no ha sido impedimento para hacer, con diversas opciones, las actividades planificadas. Si se necesitaría tomar en cuenta algunos materiales para ciertas prácticas o actividades que se necesitan insumos específicos y rebasar esa limitante que, se podría presentar para el método de enseñanza y adquirir los conocimientos de forma un poco más práctica.
+</p>
+
+<img src="./src/clorh.png" style="float: right; width: calc(var(--column-width)*0.5);">
+<img src="./src/sul.png" style="float: left; width: calc(var(--column-width)*0.5);">
+
+
+
+
+<p class="last-page"></p>
+<div class="bookmark" style="display: block; left: 3685.5px;">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" x="0px" y="0px" width="100%" height="100%" viewBox="0 0 40 80" xml:space="preserve">
+<g>
+<polygon points="0,0 0,80 20,70 40,80 40,0"></polygon>
+</g>
+</svg>
+</div>
+</div>
+<button class="toc-button">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" x="0px" y="0px" width="100%" height="100%" viewBox="0 0 80 40" xml:space="preserve">
+<g>
+<rect x="0" y="10" width="5" height="1"></rect>
+<rect x="0" y="20" width="5" height="1"></rect>
+<rect x="0" y="30" width="5" height="1"></rect>
+<rect x="10" y="10" width="70" height="1"></rect>
+<rect x="10" y="20" width="70" height="1"></rect>
+<rect x="10" y="30" width="70" height="1"></rect>
+</g>
+</svg>
+</button>
+
+</body></html>
