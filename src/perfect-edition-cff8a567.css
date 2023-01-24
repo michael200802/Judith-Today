@@ -422,7 +422,7 @@ div.book::before {
   left: 0;
   width: calc( ( var(--column-width) + var(--base-unit) )*0.04);
   height: var(--column-height);
-  background: linear-gradient(to right, var(--shade-color-origin) 0%, var(--shade-color-origin) 95%, var(--shade-color-destination) 100%);
+  background: rgb(237, 231, 231);
   content: "";
   z-index: 1000;
 }
@@ -433,7 +433,7 @@ div.book::after {
   right: 0;
   width: calc( ( var(--column-width) + var(--base-unit) )*0.04);
   height: var(--column-height);
-  background: linear-gradient(to left, var(--shade-color-origin) 0%, var(--shade-color-origin) 95%, var(--shade-color-destination) 100%);
+  background: rgb(237, 231, 231);
   content: "";
   z-index: 1000;
 }
