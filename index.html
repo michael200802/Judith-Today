@@ -69,6 +69,15 @@ Kobayashi Issa
   //  1: turn forward
   // -1: turn back
   //  0: turn to "this page", i.e., re-center it
+
+  function GetColumnTotal()
+  {
+    const columnWidth = getComputed("column-width");
+    const columnGap = getComputed("column-gap");
+    const columnTotal = Math.round(columnWidth + columnGap);
+    return columnTotal;
+  }
+
   function turnPage(turnDirection) {
 
     // How wide is one page, currently?
@@ -84,11 +93,7 @@ Kobayashi Issa
     const currentPageNumber = Math.trunc(currentLeftOffset / columnTotal);
 
     // Where do we want to be?
-    targetPageNumber = currentPageNumber + turnDirection;
-    if(targetPageNumber != 0 && currentPageNumber != 0)
-    {
-      targetPageNumber = targetPageNumber + turnDirection;
-    }
+    targetPageNumber = currentPageNumber + turnDirection*2;
 
     console.log(" Curr: " + currentPageNumber + " ----> Target: " + targetPageNumber);
 
@@ -103,7 +108,7 @@ Kobayashi Issa
       closestPageEdge += columnTotal * turnDirection;
       writePageNumber(targetPageNumber + 1); // hacky
     }
-    else if(targetPageNumber == -1)
+    else if(targetPageNumber < 0)
     {
       return;
     }
@@ -126,14 +131,7 @@ Kobayashi Issa
     window.location.hash = "";
 
     // After all this, we are finally ready to scroll:
-    if(targetPageNumber == 0)
-    {
-      xScroll(closestPageEdge);
-    }
-    else
-    {
-      xScroll(closestPageEdge + Math.trunc(columnTotal/2));
-    }
+    xScroll(closestPageEdge + Math.trunc(columnTotal/2));
   }
 
   // This function turns, without any animation, to a particular numbered page.
@@ -436,7 +434,7 @@ Kobayashi Issa
 
 </script>
 </head>
-<body>
+<body onload="xScroll(Math.round(GetColumnTotal()/2));">
 <nav class="invisible">
 <div class="toc">
 <h1>Indice</h1>
@@ -457,12 +455,7 @@ Kobayashi Issa
 <div class="title"><h1><span>Annabel&nbsp;Scheme</span><span>and&nbsp;the</span><span>Adventure of&nbsp;the New&nbsp;Golden&nbsp;Gate</span></h1><h2>Robin Sloan</h2></div>
 </div>
 <div class="book">
-<div class="introduction">
-<h2>Revista Digital</h2>
-<p>
-  Por Michael Espinoza.
-</p>
-</div>
+
 <img class="cover" src="./src/scheme-cover-web.jpg" style="display: block; break-before: column; break-after: column; width: var(--column-width); height: var(--column-height); max-height: var(--column-height); overflow: hidden; mix-blend-mode: multiply; object-fit: contain;">
 
 <!--
@@ -477,7 +470,7 @@ Kobayashi Issa
 </h2>
 
 <div>
-  <img src="./src/HP_CARA.jpg" style="width: calc(var(--column-width)*0.3); float: left;">
+  <img src="./src/HP_CARA.jpg" class="l3img">
 
   <p>
     H.P Lovecraft fue un escritor, pero, sobre todo, un gran imaginativo, es considerado según muchos expertos cómo el creador de un nuevo género literario y artístico. El horror cósmico nos presenta, con un halo de misterio e impotencia, lo que mora más allá de los confines del espacio cómo algo inalcanzable, ineludible y sofocante, un terror que con su sola presencia nos enloquece. Con este cóctel de bizarreadas (en el sentido anglosajón de la palabra) se cuecen tramas que exploran el miedo más fundamental del ser humano, el miedo a lo desconocido. Esta manera de contar historias e infundir terror y fascinación nos puede sonar desconocida a muchos, pero los resquicios se observan aún en la cultura pop a través de diversas y muy conocidas obras.
@@ -491,7 +484,7 @@ Kobayashi Issa
     Pero ¿dónde podemos encontrar presente esto más allá de los libros? El cine es el mejor ejemplo de cómo adaptar este tipo de conceptos más allá de la literatura. Películas de terror muy conocidas cómo Alien e It o series como Juego de tronos nos presentan a seres humanos peleando con monstruos del espacio sideral que escapan a su comprensión. The thing es el clásico del terror del maestro John Carpenter, una película que nos presenta a unos investigadores en la Antártida que se topan con una cosa cambia formas que los atormenta y busca matarlos siendo un potencial peligro para la raza humana. Con esta premisa que toma elemento de En las montañas de la locura, Carpenter da cátedra de cómo dar miedo sin perder el factor del desconocimiento.
   </p>
 
-  <img src="./src/LA_COSA.jpg" style="width: calc(var(--column-width)*0.35); float: right;">
+  <img src="./src/LA_COSA.jpg" class="r3img">
 
   <p>
     Otro de los grandes medios por los que se ha difundido esto es el arte de los videojuegos. Grandes videojuegos como Skyrim, The sinking city, Eternal darkness y World of Warcraft basan su historia o toman elementos de la obra de H.P Lovecraft. El más aclamado y conocido es Bloodborne, aquí encarnamos a un cazador en la ciudad de Yharnam en la noche de la caza, lugar en el que los habitantes han sido infectados por una misteriosa enfermedad proveniente de antiguos dioses. Con cultos extraños y una metrópoli sumida en una locura onírica, Bloodborne ha sido galardonado múltiples veces por su historia.
@@ -501,9 +494,9 @@ Kobayashi Issa
     Finalmente hablemos de uno de mis artes favoritos, la música. Y aquí el término de horror cósmico y su definición se difuminan un poco pues el plasmar este miedo primordial y onírico a través de la música es simple y sencillamente titánico. Cuidar no solo la estética de cómo suena tu obra sino también lo que quiere reflejar es muy complicado, pero hay muy buenos ejemplos (aunque bastante desconocidos) de esto.
   </p>
 
-  <img src="./src/BLOODBORNE.jpg" style="width: calc(var(--column-width)*0.6); float: left;">
+  <img src="./src/BLOODBORNE.jpg" class="l5img">
   
-  <p style="margin-top: calc(var(--column-height)*0.1);">
+  <p>
     
     Quizá la más conocida sea The call of ktulu de Metallica, titulada cómo el relato más conocido de Lovecraft, la pieza adapta La sombra sobre Innsmouth de manera subliminal y cargada de simbolismos a través de una instrumental de casi nueve minutos. Me gustaría recomendar personalmente el álbum de The great old ones and other beings, un álbum conceptual en el que cada canción trata sobre un dios antiguo y que trasmite una gran estética lovecraftiana.
   </p>
@@ -537,6 +530,8 @@ Kobayashi Issa
   </p>
 
   <img src="src/TELES.png" class="r5img">
+
+
 
 </div>
 
